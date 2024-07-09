@@ -1,13 +1,12 @@
 package org.example;
 
 import org.apache.poi.ss.usermodel.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TableColumnSorter {
     private static final Logger logger = LoggerFactory.getLogger(TableColumnSorter.class);
@@ -15,9 +14,17 @@ public class TableColumnSorter {
     public static void sortColumnsByHeaders(Workbook workbook, String sheetName) {
         // Пары заголовков, которые нужно расположить рядом
         List<String[]> headerPairs = Arrays.asList(
+                new String[]{"Структурное подразделение", "Подразделение ДО"},
                 new String[]{"Код позиции", "Код подрядчика"},
-                new String[]{"Структурное подразделение", "Структурное подразделение"},
-                new String[]{"Инвентарный номер", "Инм.№"}
+                new String[]{"Инвентарный номер", "Инм.№"},
+                new String[]{"Наименование МТР", "Полное наименование"},
+                new String[]{"Содержание работ.Сводный код XYZ", "XYZ (from file2)"},
+                new String[]{"Объект работ", "Наименование объекта"},
+                new String[]{"Содержание работ (from file1)", "Содержание работ (from file2)"},
+                new String[]{"Спецификация поставщика (from file1)", "№ спец (from file2)"},
+                new String[]{"Поставщик (from file1)", "Поставщик (from file2)"},
+                new String[]{"Доходный договор (from file1)", "№ договора подряда (from file2)"},
+                new String[]{"Принципал", "ДО (from file2)"}
                 // Добавьте больше пар по необходимости
         );
 
@@ -48,7 +55,10 @@ public class TableColumnSorter {
             headerIndexMap.put(cellValue, i);
         }
 
-        // Перебираем пары заголовков и сортируем столбцы
+        // Список для хранения пар с индексами
+        List<int[]> indexPairs = new ArrayList<>();
+
+        // Перебираем пары заголовков и определяем индексы
         for (String[] pair : headerPairs) {
             String header1 = pair[0];
             String header2 = pair[1];
@@ -57,10 +67,25 @@ public class TableColumnSorter {
             int index2 = findHeaderIndex(headerIndexMap, header2);
 
             if (index1 != -1 && index2 != -1) {
-                // Переносим столбцы в лист "SortedData"
-                moveColumns(sheet, sortedSheet, index1, index2);
+                indexPairs.add(new int[]{index1, index2});
             } else {
                 logger.warn("Заголовки '{}' и '{}' не найдены в листе '{}'", header1, header2, sheetName);
+            }
+        }
+
+        // Перемещаем пары столбцов в начало
+        int targetIndex = 0;
+        for (int[] indexes : indexPairs) {
+            int index1 = indexes[0];
+            int index2 = indexes[1];
+            moveColumn(sheet, sortedSheet, index1, targetIndex++);
+            moveColumn(sheet, sortedSheet, index2, targetIndex++);
+        }
+
+        // Перемещаем оставшиеся столбцы
+        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+            if (!isIndexInPairs(i, indexPairs)) {
+                moveColumn(sheet, sortedSheet, i, targetIndex++);
             }
         }
 
@@ -72,7 +97,16 @@ public class TableColumnSorter {
         }
     }
 
-    private static void moveColumns(Sheet sourceSheet, Sheet targetSheet, int columnIndex1, int columnIndex2) {
+    private static boolean isIndexInPairs(int index, List<int[]> indexPairs) {
+        for (int[] pair : indexPairs) {
+            if (pair[0] == index || pair[1] == index) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void moveColumn(Sheet sourceSheet, Sheet targetSheet, int sourceIndex, int targetIndex) {
         int lastRow = sourceSheet.getLastRowNum();
 
         for (int i = 0; i <= lastRow; i++) {
@@ -87,20 +121,14 @@ public class TableColumnSorter {
                 targetRow = targetSheet.createRow(i); // Создаем строку в целевом листе, если она отсутствует
             }
 
-            // Создаем новые ячейки в нужных столбцах целевого листа
-            Cell cell1 = sourceRow.getCell(columnIndex1);
-            Cell cell2 = sourceRow.getCell(columnIndex2);
+            // Переносим столбец
+            Cell sourceCell = sourceRow.getCell(sourceIndex);
+            Cell targetCell = targetRow.createCell(targetIndex);
 
-            // Создаем новую ячейку в конкретном столбце для cell1
-            if (cell1 != null) {
-                Cell newCell1 = targetRow.createCell(columnIndex1);
-                setCellValue(cell1, newCell1);
-            }
-
-            // Создаем новую ячейку в конкретном столбце для cell2
-            if (cell2 != null) {
-                Cell newCell2 = targetRow.createCell(columnIndex2);
-                setCellValue(cell2, newCell2);
+            if (sourceCell != null) {
+                setCellValue(sourceCell, targetCell);
+            } else {
+                targetCell.setCellValue(""); // Обработка пустых ячеек
             }
         }
     }

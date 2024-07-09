@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class ExcelMerger {
     private static final Logger logger = LoggerFactory.getLogger(ExcelMerger.class);
@@ -103,21 +105,36 @@ public class ExcelMerger {
     private static void createHeaderRow(Sheet sheet, Workbook workbook1, Workbook workbook2) {
         Row headerRow = sheet.createRow(0);
 
+        // Set to keep track of added headers
+        Set<String> addedHeaders = new HashSet<>();
+
         // Extract headers from workbook1 with source indication
         Sheet sheet1 = workbook1.getSheetAt(0);
         Row headerRow1 = sheet1.getRow(0);
         int cellIndex = 0;
         for (Cell cell : headerRow1) {
+            String headerValue = getCellValueAsString(cell);
+            String newHeaderValue = headerValue + " (from file1)";
+            if (addedHeaders.contains(newHeaderValue)) {
+                newHeaderValue = headerValue + " (from file1, duplicate)";
+            }
             Cell newCell = headerRow.createCell(cellIndex++);
-            newCell.setCellValue(getCellValueAsString(cell) + " (from " + "file1" + ")");
+            newCell.setCellValue(newHeaderValue);
+            addedHeaders.add(newHeaderValue);
         }
 
         // Extract headers from workbook2 with source indication
         Sheet sheet2 = workbook2.getSheetAt(0);
         Row headerRow2 = sheet2.getRow(0);
         for (Cell cell : headerRow2) {
+            String headerValue = getCellValueAsString(cell);
+            String newHeaderValue = headerValue + " (from file2)";
+            if (addedHeaders.contains(newHeaderValue)) {
+                newHeaderValue = headerValue + " (from file2, duplicate)";
+            }
             Cell newCell = headerRow.createCell(cellIndex++);
-            newCell.setCellValue(getCellValueAsString(cell) + " (from " + "file2" + ")");
+            newCell.setCellValue(newHeaderValue);
+            addedHeaders.add(newHeaderValue);
         }
     }
 
@@ -209,12 +226,7 @@ public class ExcelMerger {
             }
 
             columnStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
             sheet.setDefaultColumnStyle(i, columnStyle);
-
-            Row headerRow = sheet.getRow(0);
-            Cell headerCell = headerRow.getCell(i);
-            headerCell.setCellValue(headerCell.getStringCellValue() + " (from " + source + ")");
         }
     }
 
