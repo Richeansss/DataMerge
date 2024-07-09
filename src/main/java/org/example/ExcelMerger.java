@@ -35,6 +35,9 @@ public class ExcelMerger {
             // Create header row with source indication
             createHeaderRow(mergedSheet, workbook1, workbook2);
 
+            applyColumnStyles(mergedSheet, 0, dataFile1.get(dataFile1.keySet().iterator().next()).getLastCellNum(), "file1");
+            applyColumnStyles(mergedSheet, dataFile1.get(dataFile1.keySet().iterator().next()).getLastCellNum(), dataFile2.get(dataFile2.keySet().iterator().next()).getLastCellNum(), "file2");
+
             // Set column width
             for (int i = 0; i < mergedSheet.getRow(0).getLastCellNum(); i++) {
                 mergedSheet.setColumnWidth(i, DEFAULT_COLUMN_WIDTH * 256); // 256 characters per unit width
@@ -73,9 +76,12 @@ public class ExcelMerger {
                 newWorkbook.write(fileOut);
             }
 
+
             workbook1.close();
             workbook2.close();
+            TableColumnSorter.sortColumnsByHeaders(newWorkbook, "MergedData");
             newWorkbook.close();
+
         } catch (IOException e) {
             logger.error("Error processing Excel files", e);
         }
@@ -156,6 +162,7 @@ public class ExcelMerger {
         }
     }
 
+
     private static String getCellValueAsString(Cell cell) {
         if (cell == null) {
             return "";
@@ -180,6 +187,38 @@ public class ExcelMerger {
                 return cell.toString();
         }
     }
+
+    private static void applyColumnStyles(Sheet sheet, int startIndex, int numColumns, String source) {
+        Workbook workbook = sheet.getWorkbook();
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+
+        for (int i = startIndex; i < startIndex + numColumns; i++) {
+            CellStyle columnStyle = workbook.createCellStyle();
+            columnStyle.cloneStyleFrom(style);
+
+            // Set different colors based on source
+            if (source.equals("file1")) {
+                columnStyle.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());
+            } else if (source.equals("file2")) {
+                columnStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+            } else {
+                columnStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            }
+
+            columnStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            sheet.setDefaultColumnStyle(i, columnStyle);
+
+            Row headerRow = sheet.getRow(0);
+            Cell headerCell = headerRow.getCell(i);
+            headerCell.setCellValue(headerCell.getStringCellValue() + " (from " + source + ")");
+        }
+    }
+
+
 
     private static void addUnmatchedRow(Workbook workbook, Row sourceRow, String sheetName) {
         Sheet unmatchedSheet = workbook.getSheet(sheetName);
