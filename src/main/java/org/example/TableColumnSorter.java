@@ -24,6 +24,9 @@ public class TableColumnSorter {
                 new String[]{"Спецификация поставщика (from file1)", "№ спец (from file2)"},
                 new String[]{"Поставщик (from file1)", "Поставщик (from file2)"},
                 new String[]{"Доходный договор (from file1)", "№ договора подряда (from file2)"},
+                new String[]{"Количество (from file1)","Ед. (from file1)"},
+                new String[]{"Акт. кол. (from file2)", "Ед. изм. (from file2)"},
+                new String[]{"Вид работ (from file1)", "Вид работ (from file2)"},
                 new String[]{"Принципал", "ДО (from file2)"}
                 // Добавьте больше пар по необходимости
         );
