@@ -8,39 +8,40 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
+
+import static org.example.XlsToXlsxConverter.convertXlsToXlsx;
 
 public class ExcelMerger {
     private static final Logger logger = LoggerFactory.getLogger(ExcelMerger.class);
-    private static final String FILE1_PATH = "ДТОиР студентам/ООРТОДО/Выгрузка_ООО_ГТТ_2024_24.06.2024_форма.xlsx";
+    private static final String FILE1_PATH = "ДТОиР студентам/ООРТОДО/Выгрузка_ООО_ГТТ_2024_24.06.2024_форма.xls";
     private static final String FILE2_PATH = "ДТОиР студентам/ООРТОДО/МТР_подрядчика_2024_17__08.07.2024.xlsx";
     private static final int KEY_COLUMN_FILE1 = 3;
     private static final int KEY_COLUMN_FILE2 = 7;
-    private static final int DEFAULT_COLUMN_WIDTH = 15; // Adjust as needed
+    private static final int DEFAULT_COLUMN_WIDTH = 15; // Ширина строки
 
     public static void main(String[] args) {
         try {
-            Workbook workbook1 = new XSSFWorkbook(new FileInputStream(FILE1_PATH));
-            Workbook workbook2 = new XSSFWorkbook(new FileInputStream(FILE2_PATH));
+            // Проверка и конвертация файлов, если они в формате XLS
+            String convertedFile1Path = convertIfNecessary(FILE1_PATH);
+            String convertedFile2Path = convertIfNecessary(FILE2_PATH);
 
-            Map<String, Row> dataFile1 = extractData(workbook1, KEY_COLUMN_FILE1);
-            Map<String, Row> dataFile2 = extractData(workbook2, KEY_COLUMN_FILE2);
+            Workbook workbook1 = new XSSFWorkbook(new FileInputStream(convertedFile1Path));
+            Workbook workbook2 = new XSSFWorkbook(new FileInputStream(convertedFile2Path));
+
+            Map<String, Row> dataFile1 = ExcelUtils.extractData(workbook1, KEY_COLUMN_FILE1);
+            Map<String, Row> dataFile2 = ExcelUtils.extractData(workbook2, KEY_COLUMN_FILE2);
 
             Workbook newWorkbook = new XSSFWorkbook();
             Sheet mergedSheet = newWorkbook.createSheet("MergedData");
 
-            // Create header row with source indication
-            createHeaderRow(mergedSheet, workbook1, workbook2);
+            // Создание заголовков с указанием источника
+            ExcelUtils.createHeaderRow(mergedSheet, workbook1, workbook2);
 
-            applyColumnStyles(mergedSheet, 0, dataFile1.get(dataFile1.keySet().iterator().next()).getLastCellNum(), "file1");
-            applyColumnStyles(mergedSheet, dataFile1.get(dataFile1.keySet().iterator().next()).getLastCellNum(), dataFile2.get(dataFile2.keySet().iterator().next()).getLastCellNum(), "file2");
+            ExcelUtils.applyColumnStyles(mergedSheet, 0, dataFile1.get(dataFile1.keySet().iterator().next()).getLastCellNum(), "file1");
+            ExcelUtils.applyColumnStyles(mergedSheet, dataFile1.get(dataFile1.keySet().iterator().next()).getLastCellNum(), dataFile2.get(dataFile2.keySet().iterator().next()).getLastCellNum(), "file2");
 
-            // Set column width
+            // Установка ширины столбца
             for (int i = 0; i < mergedSheet.getRow(0).getLastCellNum(); i++) {
                 mergedSheet.setColumnWidth(i, DEFAULT_COLUMN_WIDTH * 256); // 256 characters per unit width
             }
@@ -53,31 +54,30 @@ public class ExcelMerger {
 
                     // Copy data from file1
                     Row dataRow1 = dataFile1.get(key);
-                    copyRowData(dataRow1, row, cellIndex, FILE1_PATH);
+                    ExcelUtils.copyRowData(dataRow1, row, cellIndex, FILE1_PATH);
 
                     // Increment cellIndex by number of columns in dataRow1
                     cellIndex += dataRow1.getLastCellNum();
 
                     // Copy data from file2
                     Row dataRow2 = dataFile2.get(key);
-                    copyRowData(dataRow2, row, cellIndex, FILE2_PATH);
+                    ExcelUtils.copyRowData(dataRow2, row, cellIndex, FILE2_PATH);
                 } else {
                     // If key is only in dataFile1, add to unmatched sheet 1
-                    addUnmatchedRow(newWorkbook, dataFile1.get(key), "UnmatchedDataFromFile1");
+                    ExcelUtils.addUnmatchedRow(newWorkbook, dataFile1.get(key), "UnmatchedDataFromFile1");
                 }
             }
 
             // Add unmatched rows from dataFile2 to unmatched sheet 2
             for (String key : dataFile2.keySet()) {
                 if (!dataFile1.containsKey(key)) {
-                    addUnmatchedRow(newWorkbook, dataFile2.get(key), "UnmatchedDataFromFile2");
+                    ExcelUtils.addUnmatchedRow(newWorkbook, dataFile2.get(key), "UnmatchedDataFromFile2");
                 }
             }
 
             try (FileOutputStream fileOut = new FileOutputStream("MergedData.xlsx")) {
                 newWorkbook.write(fileOut);
             }
-
 
             workbook1.close();
             workbook2.close();
@@ -87,170 +87,19 @@ public class ExcelMerger {
         } catch (IOException e) {
             logger.error("Error processing Excel files", e);
         }
+
+
     }
-
-    private static Map<String, Row> extractData(Workbook workbook, int keyColumnIndex) {
-        Map<String, Row> dataMap = new HashMap<>();
-        Sheet sheet = workbook.getSheetAt(0);
-        for (Row row : sheet) {
-            Cell cell = row.getCell(keyColumnIndex);
-            if (cell != null) {
-                String key = getCellValueAsString(cell);
-                dataMap.put(key, row);
-            }
-        }
-        return dataMap;
-    }
-
-    private static void createHeaderRow(Sheet sheet, Workbook workbook1, Workbook workbook2) {
-        Row headerRow = sheet.createRow(0);
-
-        // Set to keep track of added headers
-        Set<String> addedHeaders = new HashSet<>();
-
-        // Extract headers from workbook1 with source indication
-        Sheet sheet1 = workbook1.getSheetAt(0);
-        Row headerRow1 = sheet1.getRow(0);
-        int cellIndex = 0;
-        for (Cell cell : headerRow1) {
-            String headerValue = getCellValueAsString(cell);
-            String newHeaderValue = headerValue + " (from file1)";
-            if (addedHeaders.contains(newHeaderValue)) {
-                newHeaderValue = headerValue + " (from file1, duplicate)";
-            }
-            Cell newCell = headerRow.createCell(cellIndex++);
-            newCell.setCellValue(newHeaderValue);
-            addedHeaders.add(newHeaderValue);
-        }
-
-        // Extract headers from workbook2 with source indication
-        Sheet sheet2 = workbook2.getSheetAt(0);
-        Row headerRow2 = sheet2.getRow(0);
-        for (Cell cell : headerRow2) {
-            String headerValue = getCellValueAsString(cell);
-            String newHeaderValue = headerValue + " (from file2)";
-            if (addedHeaders.contains(newHeaderValue)) {
-                newHeaderValue = headerValue + " (from file2, duplicate)";
-            }
-            Cell newCell = headerRow.createCell(cellIndex++);
-            newCell.setCellValue(newHeaderValue);
-            addedHeaders.add(newHeaderValue);
-        }
-    }
-
-    private static void copyRowData(Row sourceRow, Row targetRow, int startIndex, String sourceFile) {
-        if (sourceRow != null && targetRow != null) {
-            int numCellsToCopy = sourceRow.getLastCellNum();
-            for (int i = 0; i < numCellsToCopy; i++) {
-                Cell sourceCell = sourceRow.getCell(i);
-                Cell targetCell = targetRow.createCell(startIndex++);
-                setCellValue(sourceCell, targetCell);
-            }
-        }
-    }
-
-    private static void setCellValue(Cell sourceCell, Cell targetCell) {
-        if (sourceCell != null) {
-            switch (sourceCell.getCellType()) {
-                case STRING:
-                    targetCell.setCellValue(sourceCell.getStringCellValue());
-                    break;
-                case NUMERIC:
-                    if (DateUtil.isCellDateFormatted(sourceCell)) {
-                        targetCell.setCellValue(sourceCell.getDateCellValue());
-                    } else {
-                        targetCell.setCellValue(sourceCell.getNumericCellValue());
-                    }
-                    break;
-                case BOOLEAN:
-                    targetCell.setCellValue(sourceCell.getBooleanCellValue());
-                    break;
-                case FORMULA:
-                    targetCell.setCellValue(sourceCell.getCellFormula());
-                    break;
-                case BLANK:
-                    targetCell.setCellValue(""); // Handle empty cells
-                    break;
-                default:
-                    targetCell.setCellValue(sourceCell.toString());
-            }
+    private static String convertIfNecessary(String filePath) throws IOException {
+        if (filePath.endsWith(".xls")) {
+            logger.info("Обнаружен файл в формате XLS: {}", filePath);
+            String xlsxFilePath = filePath.replace(".xls", ".xlsx");
+            convertXlsToXlsx(filePath, xlsxFilePath);
+            return xlsxFilePath;
+        } else if (filePath.endsWith(".xlsx")) {
+            return filePath;
         } else {
-            targetCell.setCellValue(""); // Handle null cells
+            throw new IOException("Неподдерживаемый формат файла: " + filePath);
         }
     }
-
-
-    private static String getCellValueAsString(Cell cell) {
-        if (cell == null) {
-            return "";
-        }
-        switch (cell.getCellType()) {
-            case STRING:
-                return cell.getStringCellValue();
-            case NUMERIC:
-                if (DateUtil.isCellDateFormatted(cell)) {
-                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-                    return df.format(cell.getDateCellValue());
-                } else {
-                    return Double.toString(cell.getNumericCellValue());
-                }
-            case BOOLEAN:
-                return Boolean.toString(cell.getBooleanCellValue());
-            case FORMULA:
-                return cell.getCellFormula();
-            case BLANK:
-                return "";
-            default:
-                return cell.toString();
-        }
-    }
-
-    private static void applyColumnStyles(Sheet sheet, int startIndex, int numColumns, String source) {
-        Workbook workbook = sheet.getWorkbook();
-        CellStyle style = workbook.createCellStyle();
-        Font font = workbook.createFont();
-        font.setBold(true);
-        style.setFont(font);
-
-        for (int i = startIndex; i < startIndex + numColumns; i++) {
-            CellStyle columnStyle = workbook.createCellStyle();
-            columnStyle.cloneStyleFrom(style);
-
-            // Set different colors based on source
-            if (source.equals("file1")) {
-                columnStyle.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());
-            } else if (source.equals("file2")) {
-                columnStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
-            } else {
-                columnStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-            }
-
-            columnStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            sheet.setDefaultColumnStyle(i, columnStyle);
-        }
-    }
-
-
-
-    private static void addUnmatchedRow(Workbook workbook, Row sourceRow, String sheetName) {
-        Sheet unmatchedSheet = workbook.getSheet(sheetName);
-        if (unmatchedSheet == null) {
-            unmatchedSheet = workbook.createSheet(sheetName);
-
-            // Create header row for unmatched sheet
-            Row headerRow = unmatchedSheet.createRow(0);
-            Sheet dummySheet = workbook.getSheetAt(0); // Use any existing sheet to get headers
-            Row dummyHeaderRow = dummySheet.getRow(0);
-            int cellIndex = 0;
-            for (Cell cell : dummyHeaderRow) {
-                Cell newCell = headerRow.createCell(cellIndex++);
-                newCell.setCellValue(getCellValueAsString(cell));
-            }
-        }
-
-        int rowIndex = unmatchedSheet.getLastRowNum() + 1;
-        Row newRow = unmatchedSheet.createRow(rowIndex);
-        copyRowData(sourceRow, newRow, 0, ""); // Source file path not needed for unmatched rows
-    }
-
 }

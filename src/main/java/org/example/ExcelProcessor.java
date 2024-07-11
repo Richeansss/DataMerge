@@ -59,7 +59,7 @@ public class ExcelProcessor {
             logger.info("Sum of left column values where target column value < 20000: {}", sumLeftColumnLess20000);
 
         } catch (IOException e) {
-            logger.error("Error reading the Excel file '{}'", filePath, e);
+            logger.error("Ошибка записи в файл '{}'", filePath, e);
         }
     }
 }

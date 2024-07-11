@@ -8,6 +8,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
+import static org.example.ExcelUtils.setCellValue;
+
 public class TableColumnSorter {
     private static final Logger logger = LoggerFactory.getLogger(TableColumnSorter.class);
 
@@ -136,36 +138,6 @@ public class TableColumnSorter {
         }
     }
 
-
-    private static void setCellValue(Cell sourceCell, Cell targetCell) {
-        if (sourceCell != null) {
-            switch (sourceCell.getCellType()) {
-                case STRING:
-                    targetCell.setCellValue(sourceCell.getStringCellValue());
-                    break;
-                case NUMERIC:
-                    if (DateUtil.isCellDateFormatted(sourceCell)) {
-                        targetCell.setCellValue(sourceCell.getDateCellValue());
-                    } else {
-                        targetCell.setCellValue(sourceCell.getNumericCellValue());
-                    }
-                    break;
-                case BOOLEAN:
-                    targetCell.setCellValue(sourceCell.getBooleanCellValue());
-                    break;
-                case FORMULA:
-                    targetCell.setCellValue(sourceCell.getCellFormula());
-                    break;
-                case BLANK:
-                    targetCell.setCellValue(""); // Handle empty cells
-                    break;
-                default:
-                    targetCell.setCellValue(sourceCell.toString());
-            }
-        } else {
-            targetCell.setCellValue(""); // Handle null cells
-        }
-    }
 
     private static String getCellValueAsString(Cell cell) {
         if (cell == null) {
