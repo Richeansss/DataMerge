@@ -1,6 +1,5 @@
 package org.example;
 
-
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -109,6 +108,13 @@ public class GroupRowsByPositionAndCount {
             Cell countValueCell = countRow.createCell(1);
             countValueCell.setCellValue(rows.size());
         }
+
+        // Add total count row at the end of the table
+        Row totalCountRow = outputSheet.createRow(currentRowNum++);
+        Cell totalCountLabelCell = totalCountRow.createCell(0);
+        totalCountLabelCell.setCellValue("Общее количество записей");
+        Cell totalCountValueCell = totalCountRow.createCell(1);
+        totalCountValueCell.setCellValue(sheet.getLastRowNum());
 
         // Save the modified workbook
         FileOutputStream fos = new FileOutputStream(outputFilePath);
