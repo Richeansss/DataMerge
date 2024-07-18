@@ -14,8 +14,8 @@ import static org.example.XlsToXlsxConverter.convertXlsToXlsx;
 
 public class ExcelMerger {
     private static final Logger logger = LoggerFactory.getLogger(ExcelMerger.class);
-    private static final String FILE1_PATH = "ДТОиР студентам/ООРТОДО/Выгрузка_ООО_ГТТ_2024_24.06.2024_форма.xls";
-    private static final String FILE2_PATH = "ДТОиР студентам/ООРТОДО/МТР_подрядчика_2024_17__08.07.2024.xlsx";
+    private static final String FILE1_PATH = "ДТОиР студентам/Выгрузка_ООО_ГТТ_2024_17.07.2024_форма.xlsx";
+    private static final String FILE2_PATH = "ДТОиР студентам/МТР_подрядчика_2024_19_.xlsx";
     private static final int KEY_COLUMN_FILE1 = 3;
     private static final int KEY_COLUMN_FILE2 = 7;
     private static final int DEFAULT_COLUMN_WIDTH = 15; // Ширина строки
