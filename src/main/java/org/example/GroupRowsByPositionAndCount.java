@@ -8,8 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
-import static org.example.CountUniqueValues.countUniqueValuesInColumn;
-
 public class GroupRowsByPositionAndCount {
 
     public static void main(String[] args) throws IOException {
@@ -48,8 +46,6 @@ public class GroupRowsByPositionAndCount {
                 groupedRows.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
             }
         }
-
-        String[] uniqueValues = groupedRows.keySet().toArray(new String[0]);
 
 
         // Create a new sheet for the grouped data
@@ -122,7 +118,5 @@ public class GroupRowsByPositionAndCount {
         fos.close();
         workbook.close();
         fis.close();
-
-        System.out.println( countUniqueValuesInColumn(uniqueValues, "ДТОиР студентам/Файлы для объединения/М.1.С,_комментарии_ОБЩ_04.07.2024 bez bloka.xlsx", "Sheet1" ));
     }
 }
