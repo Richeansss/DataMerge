@@ -1,6 +1,9 @@
 package org.example;
 
 import org.apache.poi.ss.usermodel.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
@@ -8,8 +11,19 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Утилитарный класс для работы с Excel файлами.
+ */
 public class ExcelUtils {
+    private static final Logger logger = LoggerFactory.getLogger(ExcelUtils.class);
 
+    /**
+     * Извлекает данные из первой страницы рабочей книги и создает карту с ключами из указанной колонки.
+     *
+     * @param workbook      Рабочая книга Excel.
+     * @param keyColumnIndex Индекс колонки, содержащей ключевые значения.
+     * @return Карта, где ключ - значение ячейки из указанной колонки, значение - строка.
+     */
     public static Map<String, Row> extractData(Workbook workbook, int keyColumnIndex) {
         Map<String, Row> dataMap = new HashMap<>();
         Sheet sheet = workbook.getSheetAt(0);
@@ -20,9 +34,17 @@ public class ExcelUtils {
                 dataMap.put(key, row);
             }
         }
+        logger.info("Данные успешно извлечены из рабочей книги.");
         return dataMap;
     }
 
+    /**
+     * Создает строку заголовка в указанном листе на основе заголовков из двух рабочих книг.
+     *
+     * @param sheet    Лист, в который добавляется строка заголовка.
+     * @param workbook1 Первая рабочая книга.
+     * @param workbook2 Вторая рабочая книга.
+     */
     public static void createHeaderRow(Sheet sheet, Workbook workbook1, Workbook workbook2) {
         Row headerRow = sheet.createRow(0);
         Set<String> addedHeaders = new HashSet<>();
@@ -53,8 +75,17 @@ public class ExcelUtils {
             newCell.setCellValue(newHeaderValue);
             addedHeaders.add(newHeaderValue);
         }
+        logger.info("Строка заголовка успешно создана.");
     }
 
+    /**
+     * Копирует данные из одной строки в другую, начиная с указанного индекса.
+     *
+     * @param sourceRow Исходная строка.
+     * @param targetRow Целевая строка.
+     * @param startIndex Индекс, с которого начинается копирование.
+     * @param sourceFile Источник файла.
+     */
     public static void copyRowData(Row sourceRow, Row targetRow, int startIndex, String sourceFile) {
         if (sourceRow != null && targetRow != null) {
             int numCellsToCopy = sourceRow.getLastCellNum();
@@ -66,6 +97,12 @@ public class ExcelUtils {
         }
     }
 
+    /**
+     * Устанавливает значение ячейки в целевую ячейку на основе значения исходной ячейки.
+     *
+     * @param sourceCell Исходная ячейка.
+     * @param targetCell Целевая ячейка.
+     */
     public static void setCellValue(Cell sourceCell, Cell targetCell) {
         if (sourceCell != null) {
             switch (sourceCell.getCellType()) {
@@ -86,16 +123,22 @@ public class ExcelUtils {
                     targetCell.setCellValue(sourceCell.getCellFormula());
                     break;
                 case BLANK:
-                    targetCell.setCellValue(""); // Handle empty cells
+                    targetCell.setCellValue(""); // Обработка пустых ячеек
                     break;
                 default:
                     targetCell.setCellValue(sourceCell.toString());
             }
         } else {
-            targetCell.setCellValue(""); // Handle null cells
+            targetCell.setCellValue(""); // Обработка null ячеек
         }
     }
 
+    /**
+     * Возвращает значение ячейки в виде строки.
+     *
+     * @param cell Ячейка для получения значения.
+     * @return Значение ячейки в виде строки.
+     */
     public static String getCellValueAsString(Cell cell) {
         if (cell == null) {
             return "";
@@ -121,6 +164,14 @@ public class ExcelUtils {
         }
     }
 
+    /**
+     * Применяет стили к колонкам листа, начиная с указанного индекса.
+     *
+     * @param sheet Лист для применения стилей.
+     * @param startIndex Начальный индекс колонки.
+     * @param numColumns Количество колонок для стилизации.
+     * @param source Источник файла для различной стилизации.
+     */
     public static void applyColumnStyles(Sheet sheet, int startIndex, int numColumns, String source) {
         Workbook workbook = sheet.getWorkbook();
         CellStyle style = workbook.createCellStyle();
@@ -128,11 +179,13 @@ public class ExcelUtils {
         font.setBold(true);
         style.setFont(font);
 
-        for (int i = startIndex; i < startIndex + numColumns; i++) {
+        int actualNumColumns = Math.min(numColumns, sheet.getRow(0).getLastCellNum() - startIndex);
+
+        for (int i = startIndex; i < startIndex + actualNumColumns; i++) {
             CellStyle columnStyle = workbook.createCellStyle();
             columnStyle.cloneStyleFrom(style);
 
-            // Set different colors based on source
+            // Установка разных цветов на основе источника
             if (source.equals("file1")) {
                 columnStyle.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());
             } else if (source.equals("file2")) {
@@ -146,20 +199,28 @@ public class ExcelUtils {
         }
     }
 
+    /**
+     * Добавляет строку в лист с несоответствующими данными.
+     *
+     * @param workbook Рабочая книга Excel.
+     * @param sourceRow Исходная строка.
+     * @param sheetName Имя листа для добавления строки.
+     */
     public static void addUnmatchedRow(Workbook workbook, Row sourceRow, String sheetName) {
         Sheet unmatchedSheet = workbook.getSheet(sheetName);
         if (unmatchedSheet == null) {
             unmatchedSheet = workbook.createSheet(sheetName);
 
-            // Create header row for unmatched sheet based on sourceRow headers
+            // Создание строки заголовка для листа несоответствующих данных на основе заголовков исходной строки
             Row headerRow = unmatchedSheet.createRow(0);
             for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
                 Cell sourceCell = sourceRow.getCell(i);
                 Cell newCell = headerRow.createCell(i);
                 newCell.setCellValue(getCellValueAsString(sourceCell));
             }
+            logger.info("Создан новый лист с несоответствующими данными: {}", sheetName);
         } else {
-            // Check if header row exists, create if not
+            // Проверка, существует ли строка заголовка, создание при отсутствии
             if (unmatchedSheet.getRow(0) == null) {
                 Row headerRow = unmatchedSheet.createRow(0);
                 for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
@@ -167,11 +228,12 @@ public class ExcelUtils {
                     Cell newCell = headerRow.createCell(i);
                     newCell.setCellValue(getCellValueAsString(sourceCell));
                 }
+                logger.info("Создана строка заголовка для листа: {}", sheetName);
             }
         }
 
         int rowIndex = unmatchedSheet.getLastRowNum() + 1;
         Row newRow = unmatchedSheet.createRow(rowIndex);
-        copyRowData(sourceRow, newRow, 0, ""); // Source file path not needed for unmatched rows
+        copyRowData(sourceRow, newRow, 0, ""); // Путь к исходному файлу не нужен для несоответствующих строк
     }
 }

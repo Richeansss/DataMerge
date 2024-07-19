@@ -13,21 +13,6 @@ import java.io.IOException;
 public class XlsToXlsxConverter {
     private static final Logger logger = LoggerFactory.getLogger(XlsToXlsxConverter.class);
 
-    public static void main(String[] args) {
-        String inputFilePath = "path/to/your/input.xls";
-        String outputFilePath = "path/to/your/output.xlsx";
-
-        logger.info("Запуск конвертации из XLS в XLSX");
-        logger.info("Путь к входному файлу: {}", inputFilePath);
-        logger.info("Путь к выходному файлу: {}", outputFilePath);
-
-        try {
-            convertXlsToXlsx(inputFilePath, outputFilePath);
-        } catch (IOException e) {
-            logger.error("Произошла ошибка при конвертации.", e);
-        }
-    }
-
     public static void convertXlsToXlsx(String inputFilePath, String outputFilePath) throws IOException {
         try (FileInputStream fis = new FileInputStream(inputFilePath);
              Workbook xlsWorkbook = new HSSFWorkbook(fis);
