@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.example.GroupRowsByPositionAndCount.groupRowsAndCountInSameFile;
+import static org.example.PyConnector.StartPyConnector;
 import static org.example.XlsToXlsxConverter.convertXlsToXlsx;
 
 /**
@@ -105,12 +106,15 @@ public class ExcelMerger {
             // Закрытие новой рабочей книги
             newWorkbook.close();
 
+
         } catch (IOException e) {
             logger.error("Ошибка при обработке Excel файлов", e);
         }
 
         // Группировка строк и подсчет одинаковых строк в том же файле
         groupRowsAndCountInSameFile("MergedData.xlsx", "SortedData");
+
+        StartPyConnector(new String[]{});
     }
 
     /**
