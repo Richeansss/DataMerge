@@ -68,8 +68,8 @@ public class PyConnector {
      * @throws IOException если возникает ошибка при создании процесса
      */
     private static Process getProcess() throws IOException {
-        String pythonInterpreter = "C:\\Users\\Алексей\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"; // Замените на путь к вашему интерпретатору Python
-        String pythonScriptPath = "C:\\Users\\Алексей\\PycharmProjects\\EmergeData\\DateFormat.py"; // Замените на путь к вашему скрипту
+        String pythonInterpreter = "C:\\Users\\Alexey\\PycharmProjects\\EmergeData\\.venv\\Scripts\\python.exe"; // Замените на путь к вашему интерпретатору Python
+        String pythonScriptPath = "C:\\Users\\Alexey\\PycharmProjects\\EmergeData\\DateFormat.py"; // Замените на путь к вашему скрипту
         ProcessBuilder processBuilder = new ProcessBuilder(pythonInterpreter, pythonScriptPath);
 
         // Запускаем процесс

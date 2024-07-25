@@ -19,8 +19,8 @@ import static org.example.XlsToXlsxConverter.convertXlsToXlsx;
  */
 public class ExcelMerger {
     private static final Logger logger = LoggerFactory.getLogger(ExcelMerger.class);
-    private static final String FILE1_PATH = "ДТОиР студентам/Выгрузка_ООО_ГТТ_2024_17.07.2024_форма.xlsx";
-    private static final String FILE2_PATH = "ДТОиР студентам/МТР_подрядчика_2024_17__08.07.2024.xlsx";
+    private static final String FILE1_PATH = "Выгрузка_МТР_ГСП_Ремонт__Подрядчик__24.07.2024.xlsx";
+    private static final String FILE2_PATH = "Выгрузка_МТР_ГСП_Ремонт__Агент__24.07.2024.xlsx";
     private static final int KEY_COLUMN_FILE1 = 3;
     private static final int KEY_COLUMN_FILE2 = 7;
     private static final int DEFAULT_COLUMN_WIDTH = 20; // Ширина строки
@@ -33,6 +33,8 @@ public class ExcelMerger {
      */
     public static void main(String[] args) throws IOException {
         try {
+            logger.info("Начало процесса объединения данных");
+
             // Проверка и конвертация файлов, если они в формате XLS
             String convertedFile1Path = convertIfNecessary(FILE1_PATH);
             String convertedFile2Path = convertIfNecessary(FILE2_PATH);
@@ -41,9 +43,13 @@ public class ExcelMerger {
             Workbook workbook1 = new XSSFWorkbook(new FileInputStream(convertedFile1Path));
             Workbook workbook2 = new XSSFWorkbook(new FileInputStream(convertedFile2Path));
 
+            logger.info("Рабочие книги успешно открыты");
+
             // Извлечение данных из файлов в виде карты ключ-строка
             Map<String, Row> dataFile1 = ExcelUtils.extractData(workbook1, KEY_COLUMN_FILE1);
             Map<String, Row> dataFile2 = ExcelUtils.extractData(workbook2, KEY_COLUMN_FILE2);
+
+            logger.info("Данные из файлов успешно извлечены");
 
             // Создание новой рабочей книги для объединенных данных
             Workbook newWorkbook = new XSSFWorkbook();
@@ -61,7 +67,10 @@ public class ExcelMerger {
                 mergedSheet.setColumnWidth(i, DEFAULT_COLUMN_WIDTH * 256); // 256 символов на единицу ширины
             }
 
+            logger.info("Заголовки созданы, стили применены, ширина столбцов установлена");
+
             int rowIndex = 1; // Начинаем с второй строки, так как первая строка для заголовков
+
             // Обработка данных из file1
             for (String key : dataFile1.keySet()) {
                 if (dataFile2.containsKey(key)) {
@@ -91,21 +100,25 @@ public class ExcelMerger {
                 }
             }
 
+            logger.info("Данные объединены");
+
             // Сохранение объединенных данных в новом Excel файле
             try (FileOutputStream fileOut = new FileOutputStream("MergedData.xlsx")) {
                 newWorkbook.write(fileOut);
+                logger.info("Объединенные данные сохранены в файл MergedData.xlsx");
             }
+
+            TableColumnSorter.sortColumnsByHeaders(newWorkbook, "MergedData");
 
             // Закрытие рабочих книг
             workbook1.close();
             workbook2.close();
-
-            // Сортировка столбцов по заголовкам в объединенном файле
-            TableColumnSorter.sortColumnsByHeaders(newWorkbook, "MergedData");
-
-            // Закрытие новой рабочей книги
             newWorkbook.close();
 
+            logger.info("Рабочие книги закрыты");
+
+            // Сортировка столбцов по заголовкам в объединенном файле
+            logger.info("Столбцы отсортированы по заголовкам");
 
         } catch (IOException e) {
             logger.error("Ошибка при обработке Excel файлов", e);
