@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Класс для группировки строк в Excel-файле по позиции и подсчета количества строк в каждой группе.
+ * Класс для группировки строк в Excel-файле по указанному полю и подсчета количества строк в каждой группе.
  */
 public class GroupRowsByPositionAndCount {
     private static final Logger logger = LoggerFactory.getLogger(GroupRowsByPositionAndCount.class);
@@ -19,17 +19,26 @@ public class GroupRowsByPositionAndCount {
     /**
      * Группирует строки и подсчитывает их количество в одном и том же файле.
      *
-     * @param inputFilePath Путь к входному файлу Excel.
-     * @param sheetName     Имя листа, на котором будет выполняться группировка.
+     * @param inputFilePath      Путь к входному файлу Excel.
+     * @param sourceSheetName    Имя листа, на котором будет выполняться группировка.
+     * @param targetSheetName    Имя листа, на который будут записаны результаты группировки.
+     * @param groupingColumnName Имя столбца, по которому будет происходить группировка.
      * @throws IOException Если возникнет ошибка при чтении или записи файла.
      */
-    public static void groupRowsAndCountInSameFile(String inputFilePath, String sheetName) throws IOException {
+    public static void groupRowsAndCountInSameFile(String inputFilePath, String sourceSheetName, String targetSheetName, String groupingColumnName) throws IOException {
         logger.info("Чтение файла: {}", inputFilePath);
         FileInputStream fis = new FileInputStream(inputFilePath);
         Workbook workbook = new XSSFWorkbook(fis);
-        Sheet sheet = workbook.getSheet(sheetName);
+        Sheet sourceSheet = workbook.getSheet(sourceSheetName);
 
-        groupAndCountRows(sheet);
+        if (sourceSheet == null) {
+            logger.error("Лист '{}' не найден в файле '{}'.", sourceSheetName, inputFilePath);
+            workbook.close();
+            fis.close();
+            return;
+        }
+
+        groupAndCountRows(sourceSheet, workbook, targetSheetName, groupingColumnName);
 
         // Сохранение измененной рабочей книги обратно в тот же файл
         FileOutputStream fos = new FileOutputStream(inputFilePath);
@@ -43,42 +52,53 @@ public class GroupRowsByPositionAndCount {
     /**
      * Группирует строки на листе и подсчитывает их количество.
      *
-     * @param sheet Лист, на котором будет выполняться группировка.
+     * @param sourceSheet        Лист, на котором будет выполняться группировка.
+     * @param workbook           Рабочая книга Excel.
+     * @param targetSheetName    Имя листа, на который будут записаны результаты группировки.
+     * @param groupingColumnName Имя столбца, по которому будет происходить группировка.
      */
-    public static void groupAndCountRows(Sheet sheet) {
-        int positionColumnIndex = -1;
-        Row headerRow = sheet.getRow(0);
+    public static void groupAndCountRows(Sheet sourceSheet, Workbook workbook, String targetSheetName, String groupingColumnName) {
+        int groupingColumnIndex = -1;
+        Row headerRow = sourceSheet.getRow(0);
 
-        // Поиск индекса колонки "ППП (from file2)"
+        // Поиск индекса колонки для группировки
         for (Cell cell : headerRow) {
-            if (cell.getStringCellValue().equals("ППП (from file2)")) {
-                positionColumnIndex = cell.getColumnIndex();
+            if (cell.getStringCellValue().equals(groupingColumnName)) {
+                groupingColumnIndex = cell.getColumnIndex();
                 break;
             }
         }
 
-        if (positionColumnIndex == -1) {
-            logger.error("Колонка 'ППП (from file2)' не найдена.");
+        if (groupingColumnIndex == -1) {
+            logger.error("Колонка '{}' не найдена.", groupingColumnName);
             return;
         }
 
-        // Группировка строк по "ППП (from file2)"
+        // Группировка строк по указанной колонке
         Map<String, List<Row>> groupedRows = new LinkedHashMap<>();
-        for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-            Row row = sheet.getRow(rowIndex);
+        for (int rowIndex = 1; rowIndex <= sourceSheet.getLastRowNum(); rowIndex++) {
+            Row row = sourceSheet.getRow(rowIndex);
             if (row != null) {
-                Cell cell = row.getCell(positionColumnIndex);
+                Cell cell = row.getCell(groupingColumnIndex);
                 String key = cell.getStringCellValue();
                 groupedRows.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
             }
         }
-        logger.info("Строки успешно сгруппированы по колонке 'ППП (from file2)'.");
+        logger.info("Строки успешно сгруппированы по колонке '{}'.", groupingColumnName);
 
         // Создание нового листа для сгруппированных данных
-        Sheet outputSheet = sheet.getWorkbook().createSheet("GroupedData");
+        Sheet targetSheet = workbook.getSheet(targetSheetName);
+        if (targetSheet == null) {
+            targetSheet = workbook.createSheet(targetSheetName);
+        } else {
+            // Очистка существующего листа
+            for (int i = targetSheet.getLastRowNum(); i >= 0; i--) {
+                targetSheet.removeRow(targetSheet.getRow(i));
+            }
+        }
 
         // Запись строки заголовка
-        Row newHeaderRow = outputSheet.createRow(0);
+        Row newHeaderRow = targetSheet.createRow(0);
         for (int colIndex = 0; colIndex < headerRow.getLastCellNum(); colIndex++) {
             Cell oldCell = headerRow.getCell(colIndex);
             Cell newCell = newHeaderRow.createCell(colIndex);
@@ -92,13 +112,13 @@ public class GroupRowsByPositionAndCount {
             List<Row> rows = entry.getValue();
 
             // Добавление заголовка группы
-            Row groupHeaderRow = outputSheet.createRow(currentRowNum++);
+            Row groupHeaderRow = targetSheet.createRow(currentRowNum++);
             Cell groupHeaderCell = groupHeaderRow.createCell(0);
-            groupHeaderCell.setCellValue("Код позиции (from file1): " + key);
+            groupHeaderCell.setCellValue("Код позиции: " + key);
 
             // Добавление строк
             for (Row row : rows) {
-                Row newRow = outputSheet.createRow(currentRowNum++);
+                Row newRow = targetSheet.createRow(currentRowNum++);
                 for (int colIndex = 0; colIndex < row.getLastCellNum(); colIndex++) {
                     Cell oldCell = row.getCell(colIndex);
                     Cell newCell = newRow.createCell(colIndex);
@@ -124,7 +144,7 @@ public class GroupRowsByPositionAndCount {
             }
 
             // Добавление строки с количеством
-            Row countRow = outputSheet.createRow(currentRowNum++);
+            Row countRow = targetSheet.createRow(currentRowNum++);
             Cell countLabelCell = countRow.createCell(0);
             countLabelCell.setCellValue("Кол-во");
             Cell countValueCell = countRow.createCell(1);
@@ -133,11 +153,11 @@ public class GroupRowsByPositionAndCount {
         }
 
         // Добавление строки с общим количеством записей в конце таблицы
-        Row totalCountRow = outputSheet.createRow(currentRowNum++);
+        Row totalCountRow = targetSheet.createRow(currentRowNum++);
         Cell totalCountLabelCell = totalCountRow.createCell(0);
         totalCountLabelCell.setCellValue("Общее количество записей");
         Cell totalCountValueCell = totalCountRow.createCell(1);
-        totalCountValueCell.setCellValue(sheet.getLastRowNum());
-        logger.info("Общее количество записей: {}", sheet.getLastRowNum());
+        totalCountValueCell.setCellValue(sourceSheet.getLastRowNum());
+        logger.info("Общее количество записей: {}", sourceSheet.getLastRowNum());
     }
 }

@@ -69,6 +69,10 @@ public class ExcelMerger {
 
             logger.info("Заголовки созданы, стили применены, ширина столбцов установлена");
 
+            ExcelUtils.createUnmatchedHeaderRow(newWorkbook, "UnmatchedDataFromFile1", workbook1);
+            ExcelUtils.createUnmatchedHeaderRow(newWorkbook, "UnmatchedDataFromFile2", workbook2);
+
+
             int rowIndex = 1; // Начинаем с второй строки, так как первая строка для заголовков
 
             // Обработка данных из file1
@@ -125,9 +129,10 @@ public class ExcelMerger {
         }
 
         // Группировка строк и подсчет одинаковых строк в том же файле
-        groupRowsAndCountInSameFile("MergedData.xlsx", "SortedData");
+        groupRowsAndCountInSameFile("MergedData.xlsx", "SortedData","GroupedData", "ППП (from file2)");
+        groupRowsAndCountInSameFile("MergedData.xlsx", "UnmatchedDataFromFile1","Unmatch_1_GroupedData", "Содержание работ.Сводный код XYZ");
 
-        StartPyConnector(new String[]{});
+        //StartPyConnector(new String[]{});
     }
 
     /**

@@ -199,6 +199,15 @@ public class ExcelUtils {
         }
     }
 
+    public static void createUnmatchedHeaderRow(Workbook workbook, String sheetName, Workbook sourceWorkbook) {
+        Sheet sheet = workbook.createSheet(sheetName);
+        Row sourceHeaderRow = sourceWorkbook.getSheetAt(0).getRow(0); // предполагается, что заголовок находится в первой строке
+        Row headerRow = sheet.createRow(0);
+        for (int i = 0; i < sourceHeaderRow.getLastCellNum(); i++) {
+            headerRow.createCell(i).setCellValue(sourceHeaderRow.getCell(i).getStringCellValue());
+        }
+    }
+
     /**
      * Добавляет строку в лист с несоответствующими данными.
      *
@@ -208,32 +217,10 @@ public class ExcelUtils {
      */
     public static void addUnmatchedRow(Workbook workbook, Row sourceRow, String sheetName) {
         Sheet unmatchedSheet = workbook.getSheet(sheetName);
-        if (unmatchedSheet == null) {
-            unmatchedSheet = workbook.createSheet(sheetName);
-
-            // Создание строки заголовка для листа несоответствующих данных на основе заголовков исходной строки
-            Row headerRow = unmatchedSheet.createRow(0);
-            for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
-                Cell sourceCell = sourceRow.getCell(i);
-                Cell newCell = headerRow.createCell(i);
-                newCell.setCellValue(getCellValueAsString(sourceCell));
-            }
-            logger.info("Создан новый лист с несоответствующими данными: {}", sheetName);
-        } else {
-            // Проверка, существует ли строка заголовка, создание при отсутствии
-            if (unmatchedSheet.getRow(0) == null) {
-                Row headerRow = unmatchedSheet.createRow(0);
-                for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
-                    Cell sourceCell = sourceRow.getCell(i);
-                    Cell newCell = headerRow.createCell(i);
-                    newCell.setCellValue(getCellValueAsString(sourceCell));
-                }
-                logger.info("Создана строка заголовка для листа: {}", sheetName);
-            }
-        }
 
         int rowIndex = unmatchedSheet.getLastRowNum() + 1;
         Row newRow = unmatchedSheet.createRow(rowIndex);
         copyRowData(sourceRow, newRow, 0, ""); // Путь к исходному файлу не нужен для несоответствующих строк
     }
+
 }
